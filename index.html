@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxie IA</title>
+<style>
+  :root{
+    --bg:#070a18; --bg2:#0d1228; --panel:rgba(16,22,46,.85); --border:rgba(120,140,255,.18);
+    --txt:#e8ecff; --dim:#8b93c4; --acc:#7c8cff; --acc2:#4fd8c8; --warn:#ffb46b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);
+    overflow:hidden;background-image:radial-gradient(1px 1px at 20% 30%,#fff8,transparent),
+      radial-gradient(1px 1px at 70% 15%,#fff6,transparent),radial-gradient(1.5px 1.5px at 85% 60%,#fff5,transparent),
+      radial-gradient(1px 1px at 40% 80%,#fff7,transparent),radial-gradient(1px 1px at 10% 65%,#fff4,transparent);
+  }
+  #app{display:flex;flex-direction:column;height:100vh}
+  header{
+    display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#0b1030f0,#070a18e8);backdrop-filter:blur(6px);z-index:5;
+  }
+  header h1{font-size:18px;font-weight:600;letter-spacing:.5px}
+  header h1 span{color:var(--acc2)}
+  nav{display:flex;gap:6px;margin-left:16px}
+  nav button{
+    background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 14px;border-radius:8px;
+    cursor:pointer;font-size:13.5px;transition:.15s;
+  }
+  nav button:hover{color:var(--txt)}
+  nav button.active{color:var(--txt);background:#1a2350;border-color:var(--border)}
+  header .spacer{flex:1}
+  .btn{
+    background:#1a2350;border:1px solid var(--border);color:var(--txt);padding:7px 14px;border-radius:8px;
+    cursor:pointer;font-size:13px;transition:.15s;white-space:nowrap;
+  }
+  .btn:hover{background:#232e63}
+  .btn.primary{background:linear-gradient(135deg,#5c6cff,#4fd8c8);border:none;color:#041022;font-weight:600}
+  .btn.danger{border-color:#ff6b8a66;color:#ff8ba3}
+  main{flex:1;position:relative;overflow:hidden}
+  .view{position:absolute;inset:0;display:none}
+  .view.active{display:flex}
+
+  /* ---------- GALAXIE ---------- */
+  #galaxy-wrap{flex:1;position:relative}
+  #galaxy{width:100%;height:100%;display:block;cursor:grab}
+  #galaxy:active{cursor:grabbing}
+  .galaxy-hint{
+    position:absolute;bottom:14px;left:50%;transform:translateX(-50%);color:var(--dim);font-size:12px;
+    background:#0b1030cc;padding:6px 14px;border-radius:20px;border:1px solid var(--border);pointer-events:none;
+  }
+  #ai-detail{
+    position:absolute;top:16px;right:16px;width:320px;max-height:calc(100% - 32px);overflow:auto;
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;display:none;
+    backdrop-filter:blur(10px);box-shadow:0 10px 40px #000a;
+  }
+  #ai-detail.open{display:block}
+  #ai-detail h3{font-size:17px;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+  #ai-detail .cat{color:var(--acc2);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+  #ai-detail p{font-size:13px;color:#c9cfee;line-height:1.5;margin-bottom:10px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .tag{font-size:11.5px;background:#1a2350;border:1px solid var(--border);padding:3px 9px;border-radius:20px;color:#b9c2ff}
+  .detail-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .legend{
+    position:absolute;top:16px;left:16px;background:#0b1030cc;border:1px solid var(--border);
+    border-radius:12px;padding:10px 14px;font-size:12px;backdrop-filter:blur(6px);
+  }
+  .legend div{display:flex;align-items:center;gap:7px;color:var(--dim);margin:3px 0}
+  .dot{width:9px;height:9px;border-radius:50%}
+
+  /* ---------- LISTES (projets / chats) ---------- */
+  .list-view{flex-direction:column;padding:20px 26px;overflow:hidden}
+  .list-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .list-head h2{font-size:19px}
+  .list-body{flex:1;overflow-y:auto;display:grid;gap:14px;align-content:start;
+    grid-template-columns:repeat(auto-fill,minmax(300px,1fr));padding-bottom:20px}
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;
+    transition:.15s;position:relative;
+  }
+  .card:hover{transform:translateY(-2px);border-color:#7c8cff66;box-shadow:0 8px 26px #0008}
+  .card h3{font-size:15px;margin-bottom:5px}
+  .card .meta{font-size:12px;color:var(--dim);margin-bottom:8px}
+  .card p{font-size:12.5px;color:#b9c2ee;line-height:1.45}
+  .card .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+  .chip{font-size:11px;background:#14204a;padding:2px 9px;border-radius:14px;color:var(--acc2)}
+  .card .del{
+    position:absolute;top:10px;right:10px;background:none;border:none;color:#555f8f;cursor:pointer;font-size:15px;
+    padding:2px 6px;border-radius:6px;
+  }
+  .card .del:hover{color:#ff8ba3;background:#2a1430}
+  .empty{grid-column:1/-1;text-align:center;color:var(--dim);padding:60px 20px;font-size:14px}
+
+  /* ---------- CONSEILLER & CHAT ---------- */
+  .chat-view{flex-direction:column}
+  .chat-outer{flex:1;display:flex;overflow:hidden}
+  .chat-side{width:250px;min-width:250px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:#0a0f24}
+  .chat-side-head{padding:14px 14px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .chat-side-head h3{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+  .chat-list{flex:1;overflow-y:auto;padding:4px 8px 8px}
+  .chat-item{padding:9px 12px;border-radius:9px;cursor:pointer;font-size:13.5px;color:#c0c7f2;margin-bottom:2px;
+    display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .chat-item:hover{background:#141b3d}
+  .chat-item.active{background:#1a2350;color:#fff}
+  .chat-item .del{background:none;border:none;color:#555f8f;cursor:pointer;font-size:13px;visibility:hidden}
+  .chat-item:hover .del{visibility:visible}
+  .chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .chat-messages{flex:1;overflow-y:auto;padding:22px 10%;display:flex;flex-direction:column;gap:14px}
+  .msg{max-width:78%;padding:11px 15px;border-radius:14px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+  .msg.user{align-self:flex-end;background:linear-gradient(135deg,#4b5bd6,#3a7fd4);border-bottom-right-radius:4px}
+  .msg.bot{align-self:flex-start;background:#141b3d;border:1px solid var(--border);border-bottom-left-radius:4px}
+  .msg.bot .rec{margin:8px 0 4px;padding:10px 12px;background:#0d1b3a;border-left:3px solid var(--acc2);border-radius:8px}
+  .msg.bot .rec b{color:var(--acc2)}
+  .msg.bot .rec span{display:block;font-size:12.5px;color:#aab2df;margin-top:3px}
+  .chat-input{display:flex;gap:10px;padding:14px 10%;padding-bottom:20px;border-top:1px solid var(--border);background:#0a0f24}
+  .chat-input textarea{
+    flex:1;background:#12183a;border:1px solid var(--border);border-radius:11px;color:var(--txt);
+    padding:11px 14px;font-size:14px;font-family:inherit;resize:none;height:46px;outline:none;
+  }
+  .chat-input textarea:focus{border-color:#7c8cff88}
+  .suggestions{display:flex;gap:8px;padding:0 10% 12px;flex-wrap:wrap}
+  .suggestions button{font-size:12px;background:#12183a;border:1px solid var(--border);color:#aab2df;
+    padding:5px 12px;border-radius:20px;cursor:pointer}
+  .suggestions button:hover{border-color:#7c8cff88;color:#fff}
+
+  /* ---------- MODALE ---------- */
+  .modal-back{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:50}
+  .modal-back.open{display:flex}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(560px,92vw);
+    max-height:88vh;overflow-y:auto}
+  .modal h2{font-size:17px;margin-bottom:16px}
+  .form-row{margin-bottom:13px}
+  .form-row label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px;letter-spacing:.4px}
+  .form-row input,.form-row select,.form-row textarea{
+    width:100%;background:#12183a;border:1px solid var(--border);border-radius:9px;color:var(--txt);
+    padding:9px 12px;font-size:13.5px;font-family:inherit;outline:none;
+  }
+  .form-row textarea{height:70px;resize:vertical}
+  .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:#7c8cff88}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+  .err{color:#ff8ba3;font-size:12px;margin-top:6px;display:none}
+
+  #toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a2350;
+    border:1px solid var(--border);color:#fff;padding:10px 20px;border-radius:12px;font-size:13.5px;
+    transition:.3s;z-index:99;opacity:0;pointer-events:none;
+  }
+  #toast.show{transform:translateX(-50%);opacity:1}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:#232b57;border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🌌 Galaxie <span>IA</span></h1>
+    <nav>
+      <button data-view="galaxy" class="active">Galaxie</button>
+      <button data-view="projects">Projets</button>
+      <button data-view="chats">Chats</button>
+      <button data-view="advisor">Conseiller</button>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn" id="btn-add-ai">+ Ajouter une IA</button>
+    <button class="btn" id="btn-export" title="Sauvegarder toutes les données">⬇ Export</button>
+    <button class="btn" id="btn-import" title="Restaurer une sauvegarde">⬆ Import</button>
+    <input type="file" id="file-import" accept="application/json" style="display:none">
+  </header>
+
+  <main>
+    <!-- GALAXIE -->
+    <section class="view active" id="view-galaxy">
+      <div id="galaxy-wrap">
+        <canvas id="galaxy"></canvas>
+        <div class="legend" id="legend"></div>
+        <div class="galaxy-hint">Cliquez sur une planète pour voir l'IA · molette pour zoomer · glisser pour déplacer</div>
+        <div id="ai-detail"></div>
+      </div>
+    </section>
+
+    <!-- PROJETS -->
+    <section class="view list-view" id="view-projects">
+      <div class="list-head">
+        <h2>🚀 Projets</h2>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn primary" id="btn-add-project">+ Nouveau projet</button>
+      </div>
+      <div class="list-body" id="projects-list"></div>
+    </section>
+
+    <!-- CHATS -->
+    <section class="view chat-view" id="view-chats">
+      <div class="chat-outer">
+        <aside class="chat-side">
+          <div class="chat-side-head">
+            <h3>Chats</h3>
+            <button class="btn" id="btn-add-chat" style="padding:4px 10px;font-size:12px">+</button>
+          </div>
+          <div class="chat-list" id="chats-list"></div>
+        </aside>
+        <div class="chat-main">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="suggestions" id="chat-suggestions"></div>
+          <div class="chat-input">
+            <textarea id="chat-text" placeholder="Écrivez à votre IA…(Entrée pour envoyer)"></textarea>
+            <button class="btn primary" id="chat-send">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONSEILLER -->
+    <section class="view chat-view" id="view-advisor">
+      <div class="chat-main" style="flex:1">
+        <div class="chat-messages" id="adv-messages"></div>
+        <div class="suggestions" id="adv-suggestions"></div>
+        <div class="chat-input">
+          <textarea id="adv-text" placeholder="Décrivez votre travail : « je veux rédiger un article de blog », « analyser ce tableau de données »…"></textarea>
+          <button class="btn primary" id="adv-send">Quelle IA ?</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODALE IA -->
+<div class="modal-back" id="modal-ai">
+  <div class="modal">
+    <h2 id="modal-ai-title">Ajouter une IA</h2>
+    <div class="form-row"><label>Nom</label><input id="f-ai-name" placeholder="ex. ChatGPT"></div>
+    <div class="form-row"><label>Catégorie</label>
+      <select id="f-ai-cat"></select>
+    </div>
+    <div class="form-row"><label>Points forts / mots-clés (séparés par des virgules)</label>
+      <input id="f-ai-tags" placeholder="ex. rédaction, code, images, recherche web"></div>
+    <div class="form-row"><label>Idéal pour (description)</label>
+      <textarea id="f-ai-desc" placeholder="ex. Rédaction longue, analyse de documents, raisonnement"></textarea></div>
+    <div class="form-row"><label>Lien (optionnel)</label><input id="f-ai-url" placeholder="https://…"></div>
+    <div class="err" id="ai-err">Le nom est obligatoire.</div>
+    <div class="modal-actions">
+      <button class="btn" id="ai-cancel">Annuler</button>
+      <button class="btn primary" id="ai-save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE PROJET -->
+<div class="modal-back" id="modal-project">
+  <div class="modal">
+    <h2 id="modal-project-title">Nouveau projet</h2>
+    <div class="form-row"><label>Nom du projet</label><input id="f-proj-name" placeholder="ex. Refonte du site"></div>
+    <div class="form-row"><label>Description</label><textarea id="f-proj-desc" placeholder="Objectif, contexte…"></textarea></div>
+    <div class="form-row"><label>IA liées au projet</label>
+      <div id="f-proj-ais" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>
+    <div class="err" id="proj-err">Le nom est obligatoire.</div>
+    <div class="modal-actions">
+      <button class="btn" id="proj-cancel">Annuler</button>
+      <button class="btn primary" id="proj-save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ================= MODÈLE DE DONNÉES ================= */
+const CATEGORIES = [
+  {id:"general",  name:"Généraliste", color:"#7c8cff", icon:"💬"},
+  {id:"code",     name:"Code & Dev",  color:"#4fd8c8", icon:"⌨️"},
+  {id:"writing",  name:"Rédaction",   color:"#ffb46b", icon:"✍️"},
+  {id:"research", name:"Recherche",   color:"#c77cff", icon:"🔎"},
+  {id:"image",    name:"Image & Design", color:"#ff8ba3", icon:"🎨"},
+  {id:"audio",    name:"Audio & Voix",color:"#ffd166", icon:"🎧"},
+  {id:"video",    name:"Vidéo",       color:"#6be0ff", icon:"🎬"},
+  {id:"data",     name:"Données & Analyse", color:"#8ef58e", icon:"📊"},
+  {id:"custom",   name:"Personnalisée", color:"#9aa5d8", icon:"⭐"},
+];
+
+const DEFAULT_AIS = [
+  {id:"chatgpt", name:"ChatGPT", cat:"general", url:"https://chatgpt.com", custom:false,
+   desc:"Assistant généraliste très polyvalent : rédaction, brainstorming, code, analyse de documents.",
+   tags:["généraliste","rédaction","brainstorming","code","texte","idées","résumé","traduction","email","cv","lettre","cours"]},
+  {id:"claude", name:"Claude", cat:"writing", url:"https://claude.ai", custom:false,
+   desc:"Excellent pour les textes longs, l'analyse de documents, le raisonnement et le code propre.",
+   tags:["rédaction","texte long","documents","analyse","raisonnement","code","contrat","rapport","article","relecture"]},
+  {id:"lechat", name:"Le Chat (Mistral)", cat:"general", url:"https://chat.mistral.ai", custom:false,
+   desc:"Assistant européen rapide, bonne recherche web, fort en français et open source.",
+   tags:["français","rapide","recherche web","open source","généraliste","européen","confidentialité"]},
+  {id:"gemini", name:"Gemini", cat:"research", url:"https://gemini.google.com", custom:false,
+   desc:"Multimodal (images, audio, vidéo), intégré à Google Workspace et à la recherche.",
+   tags:["multimodal","images","vidéo","google","docs","sheets","gmail","recherche","analyse d'image"]},
+  {id:"perplexity", name:"Perplexity", cat:"research", url:"https://perplexity.ai", custom:false,
+   desc:"Moteur de réponse avec sources citées : idéal pour la veille et la recherche factuelle.",
+   tags:["recherche web","sources","veille","factuel","actualité","comparaison","études","market"]},
+  {id:"copilot", name:"GitHub Copilot", cat:"code", url:"https://github.com/features/copilot", custom:false,
+   desc:"Autocomplétion et aide au code directement dans l'éditeur.",
+   tags:["code","programmation","autocomplétion","développement","refactoring","tests","debug"]},
+  {id:"midjourney", name:"Midjourney", cat:"image", url:"https://midjourney.com", custom:false,
+   desc:"Génération d'images artistiques de très haute qualité.",
+   tags:["images","illustration","art","design","logo","visuel","affiche","esthétique"]},
+  {id:"notebooklm", name:"NotebookLM", cat:"research", url:"https://notebooklm.google.com", custom:false,
+   desc:"Analyse de vos propres documents avec sources, résumés et podcasts audio.",
+   tags:["documents","pdf","résumé","notes","podcast","étude","sources personnelles"]},
+  {id:"elevenlabs", name:"ElevenLabs", cat:"audio", url:"https://elevenlabs.io", custom:false,
+   desc:"Voix synthétiques ultra réalistes, doublage et clonage de voix.",
+   tags:["voix","audio","doublage","podcast","narration","texte en voix","video voice"]},
+  {id:"suno", name:"Suno", cat:"audio", url:"https://suno.com", custom:false,
+   desc:"Création de chansons complètes (musique + paroles) à partir d'un texte.",
+   tags:["musique","chanson","compositions","jingle","paroles"]},
+  {id:"runway", name:"Runway", cat:"video", url:"https://runwayml.com", custom:false,
+   desc:"Génération et édition de vidéos par IA.",
+   tags:["vidéo","animation","montage","génération vidéo","effets"]},
+  {id:"deepl", name:"DeepL", cat:"writing", url:"https://deepl.com", custom:false,
+   desc:"Traduction de référence, plus naturelle que les traducteurs classiques.",
+   tags:["traduction","langues","relecture","traduire"]},
+  {id:"excelcopilot", name:"Copilot / IA tableurs", cat:"data", url:"", custom:false,
+   desc:"Analyse de données, formules et graphiques dans Excel, Sheets ou via un chat.",
+   tags:["données","tableur","excel","sheets","formules","graphiques","analyse de données","budget","statistiques"]},
+];
+
+let DB = load();
+function load(){
+  try{
+    const raw = localStorage.getItem("galaxie-ia");
+    if(raw){ const d = JSON.parse(raw); if(d && d.ais) return d; }
+  }catch(e){}
+  return { ais: JSON.parse(JSON.stringify(DEFAULT_AIS)), projects: [], chats: [], advisor: [] };
+}
+function save(){ localStorage.setItem("galaxie-ia", JSON.stringify(DB)); }
+
+function catOf(id){ return CATEGORIES.find(c=>c.id===id) || CATEGORIES[CATEGORIES.length-1]; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 2400);
+}
+function normalize(s){
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+
+/* ================= NAVIGATION ================= */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    document.getElementById("view-"+b.dataset.view).classList.add("active");
+    if(b.dataset.view==="galaxy") drawGalaxy();
+    if(b.dataset.view==="projects") renderProjects();
+    if(b.dataset.view==="chats"){ renderChatList(); renderChat(); }
+    if(b.dataset.view==="advisor") renderAdvisor();
+  });
+});
+function go(view){
+  document.querySelector(`nav button[data-view="${view}"]`).click();
+}
+
+/* ================= GALAXIE (canvas) ================= */
+const canvas = document.getElementById("galaxy");
+const ctx = canvas.getContext("2d");
+let cam = {x:0, y:0, zoom:1};
+let planets = [];
+let hovered = null;
+let selected = null;
+let dragging = false, dragMoved = false, lastX=0, lastY=0;
+
+function sizeCanvas(){
+  const r = canvas.parentElement.getBoundingClientRect();
+  canvas.width = r.width * devicePixelRatio;
+  canvas.height = r.height * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener("resize", ()=>{ sizeCanvas(); drawGalaxy(); });
+
+function buildPlanets(){
+  planets = [];
+  const cats = CATEGORIES.filter(c => DB.ais.some(a=>a.cat===c.id));
+  const cx = ()=> canvas.clientWidth/2, cy = ()=> canvas.clientHeight/2;
+  cats.forEach((cat, ci)=>{
+    const members = DB.ais.filter(a=>a.cat===cat.id);
+    const orbit = 110 + ci*74;
+    const speed = 0.00012 / Math.sqrt(orbit/110);
+    const phase = ci * 1.7;
+    members.forEach((ai, mi)=>{
+      const a0 = phase + mi * (Math.PI*2/Math.max(members.length,1));
+      planets.push({ ai, cat, orbit, a0, speed, angle: a0, r: ai.custom ? 15 : 12 });
+    });
+  });
+}
+
+let animStart = performance.now();
+function drawGalaxy(){
+  sizeCanvas();
+  buildPlanets();
+  animStart = performance.now();
+  requestAnimationFrame(tick);
+}
+function tick(now){
+  if(!document.getElementById("view-galaxy").classList.contains("active")) return;
+  const t = now;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  ctx.clearRect(0,0,W,H);
+
+  // soleils de catégories
+  const cats = CATEGORIES.filter(c => DB.ais.some(a=>a.cat===c.id));
+  const sunPos = {};
+  cats.forEach((cat,ci)=>{
+    const ang = (ci/cats.length)*Math.PI*2 - Math.PI/2;
+    const R = 170 + Math.min(cats.length-1,3)*0; // anneau des soleils
+    const x = W/2 + Math.cos(ang)*R*0.9;
+    const y = H/2 + Math.sin(ang)*R*0.62;
+    sunPos[cat.id] = {x,y};
+    // halo
+    const g = ctx.createRadialGradient(x,y,0,x,y,60);
+    g.addColorStop(0, cat.color+"55"); g.addColorStop(1, "transparent");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,60,0,7); ctx.fill();
+    ctx.fillStyle = cat.color;
+    ctx.beginPath(); ctx.arc(x,y,14,0,7); ctx.fill();
+    ctx.fillStyle = "#e8ecff";
+    ctx.font = "600 12px Segoe UI, sans-serif"; ctx.textAlign="center";
+    ctx.fillText(cat.icon+" "+cat.name, x, y+32);
+  });
+
+  // planètes en orbite autour de leur soleil
+  planets.forEach(p=>{
+    const s = sunPos[p.cat.id];
+    p.angle = p.a0 + (t-animStart)*p.speed;
+    const ex = s.x + Math.cos(p.angle)*36;
+    const ey = s.y + Math.sin(p.angle)*36;
+    p.x = ex; p.y = ey;
+    // orbite
+    ctx.strokeStyle = p.cat.color+"22";
+    ctx.beginPath(); ctx.arc(s.x,s.y,36,0,7); ctx.stroke();
+    // planète
+    const hl = (hovered===p || selected===p);
+    const g = ctx.createRadialGradient(ex,ey,0,ex,ey,p.r*(hl?2.4:1.9));
+    g.addColorStop(0, p.cat.color); g.addColorStop(1, p.cat.color+"00");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ex,ey,p.r*(hl?2.4:1.9),0,7); ctx.fill();
+    ctx.fillStyle = hl ? "#ffffff" : p.cat.color;
+    ctx.beginPath(); ctx.arc(ex,ey,p.r*(hl?1.35:0.62),0,7); ctx.fill();
+    // nom
+    ctx.fillStyle = hl ? "#fff" : "#aab3e0";
+    ctx.font = (hl?"600 ":"")+"11px Segoe UI, sans-serif"; ctx.textAlign="center";
+    ctx.fillText(p.ai.name, ex, ey - p.r - 7);
+  });
+
+  // centre : étoile principale
+  const cg = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,90);
+  cg.addColorStop(0,"#7c8cff44"); cg.addColorStop(1,"transparent");
+  ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(W/2,H/2,90,0,7); ctx.fill();
+  ctx.fillStyle="#e8ecff"; ctx.font="600 15px Segoe UI, sans-serif";
+  ctx.fillText("Mes IA · "+DB.ais.length, W/2, H/2 - 6);
+  ctx.fillStyle="#8b93c4"; ctx.font="11px Segoe UI, sans-serif";
+  ctx.fillText(DB.projects.length+" projets · "+DB.chats.length+" chats", W/2, H/2 + 14);
+
+  requestAnimationFrame(tick);
+}
+
+canvas.addEventListener("mousemove", e=>{
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+  hovered = null;
+  for(const p of planets){
+    if(Math.hypot(p.x-mx, p.y-my) < p.r+10){ hovered = p; break; }
+  }
+  canvas.title = hovered ? hovered.ai.name : "";
+});
+canvas.addEventListener("click", e=>{
+  if(dragMoved) return;
+  if(hovered){ selected = hovered; showAIDetail(hovered.ai); }
+  else { selected = null; document.getElementById("ai-detail").classList.remove("open"); }
+});
+canvas.addEventListener("wheel", e=>{
+  e.preventDefault();
+  // zoom léger via orbit radius scale (simple démo)
+}, {passive:false});
+
+function showAIDetail(ai){
+  const box = document.getElementById("ai-detail");
+  const c = catOf(ai.cat);
+  box.innerHTML = `
+    <h3>${c.icon} ${esc(ai.name)}</h3>
+    <div class="cat">${esc(c.name)}${ai.custom ? " · ajoutée par vous" : ""}</div>
+    <p>${esc(ai.desc || "")}</p>
+    <div class="tags">${ai.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+    <div class="detail-actions">
+      ${ai.url ? `<a class="btn" href="${esc(ai.url)}" target="_blank" rel="noopener">Ouvrir ↗</a>` : ""}
+      <button class="btn primary" id="detail-ask">Demander conseil</button>
+      ${ai.custom ? `<button class="btn" id="detail-edit">Modifier</button>
+                     <button class="btn danger" id="detail-del">Supprimer</button>` : ""}
+    </div>`;
+  box.classList.add("open");
+  document.getElementById("detail-ask").onclick = ()=>{
+    pendingAdvisorAI = ai.name;
+    document.getElementById("adv-text").value =
+      `Pour quel type de travail devrais-je utiliser ${ai.name} ?`;
+    go("advisor");
+    setTimeout(sendAdvisor, 60);
+  };
+  if(ai.custom){
+    document.getElementById("detail-edit").onclick = ()=>openAIModal(ai);
+    document.getElementById("detail-del").onclick = ()=>{
+      DB.ais = DB.ais.filter(a=>a.id!==ai.id); save(); box.classList.remove("open");
+      renderLegend(); toast("IA supprimée");
+    };
+  }
+}
+function renderLegend(){
+  document.getElementById("legend").innerHTML =
+    CATEGORIES.filter(c=>DB.ais.some(a=>a.cat===c.id))
+      .map(c=>`<div><span class="dot" style="background:${c.color}"></span>${c.icon} ${esc(c.name)}</div>`).join("");
+}
+
+/* ================= PROJETS ================= */
+let projEditing = null;
+function renderProjects(){
+  const wrap = document.getElementById("projects-list");
+  if(!DB.projects.length){
+    wrap.innerHTML = `<div class="empty">Aucun projet pour le moment.<br>Créez un projet pour regrouper vos chats et vos IA.</div>`;
+    return;
+  }
+  wrap.innerHTML = DB.projects.map(p=>{
+    const chats = DB.chats.filter(c=>c.projectId===p.id);
+    return `<div class="card" data-id="${p.id}">
+      <button class="del" data-del="${p.id}" title="Supprimer">✕</button>
+      <h3>${esc(p.name)}</h3>
+      <div class="meta">${chats.length} chat${chats.length>1?"s":""} · créé le ${new Date(p.created).toLocaleDateString("fr-FR")}</div>
+      <p>${esc(p.desc||"")}</p>
+      <div class="chips">${p.aiIds.map(id=>{
+        const ai = DB.ais.find(a=>a.id===id);
+        return ai ? `<span class="chip">${esc(ai.name)}</span>` : "";
+      }).join("")}</div>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll(".card").forEach(el=>{
+    el.addEventListener("click", e=>{
+      if(e.target.dataset.del) return;
+      openProjectChats(el.dataset.id);
+    });
+  });
+  wrap.querySelectorAll("[data-del]").forEach(b=>{
+    b.addEventListener("click", e=>{
+      e.stopPropagation();
+      const id = b.dataset.del;
+      if(!confirm("Supprimer ce projet ? (ses chats ne seront pas supprimés)")) return;
+      DB.projects = DB.projects.filter(p=>p.id!==id);
+      DB.chats.forEach(c=>{ if(c.projectId===id) c.projectId=null; });
+      save(); renderProjects();
+    });
+  });
+}
+function openProjectChats(id){
+  const p = DB.projects.find(x=>x.id===id);
+  if(!p) return;
+  currentProjectFilter = id;
+  currentChatId = DB.chats.find(c=>c.projectId===id)?.id || null;
+  if(!currentChatId) newChat(id);
+  go("chats");
+  renderChatList();
+}
+let currentProjectFilter = null;
+
+document.getElementById("btn-add-project").onclick = ()=>openProjectModal();
+function openProjectModal(proj){
+  projEditing = proj || null;
+  document.getElementById("modal-project-title").textContent = proj ? "Modifier le projet" : "Nouveau projet";
+  document.getElementById("f-proj-name").value = proj ? proj.name : "";
+  document.getElementById("f-proj-desc").value = proj ? (proj.desc||"") : "";
+  document.getElementById("f-proj-ais").innerHTML = DB.ais.map(a=>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;background:#12183a;padding:4px 10px;border-radius:14px;cursor:pointer">
+       <input type="checkbox" value="${a.id}" ${(proj?proj.aiIds:[]).includes(a.id)?"checked":""}> ${esc(a.name)}
+     </label>`).join("");
+  document.getElementById("proj-err").style.display="none";
+  document.getElementById("modal-project").classList.add("open");
+}
+document.getElementById("proj-cancel").onclick = ()=>document.getElementById("modal-project").classList.remove("open");
+document.getElementById("proj-save").onclick = ()=>{
+  const name = document.getElementById("f-proj-name").value.trim();
+  if(!name){ document.getElementById("proj-err").style.display="block"; return; }
+  const aiIds = [...document.querySelectorAll("#f-proj-ais input:checked")].map(i=>i.value);
+  if(projEditing){
+    projEditing.name=name; projEditing.desc=document.getElementById("f-proj-desc").value.trim(); projEditing.aiIds=aiIds;
+  }else{
+    DB.projects.push({id:uid(), name, desc:document.getElementById("f-proj-desc").value.trim(), aiIds, created:Date.now()});
+  }
+  save(); document.getElementById("modal-project").classList.remove("open"); renderProjects();
+};
+
+/* ================= CHATS ================= */
+let currentChatId = null;
+
+function renderChatList(){
+  const wrap = document.getElementById("chats-list");
+  const chats = [...DB.chats].sort((a,b)=>b.updated-a.updated);
+  if(currentProjectFilter){
+    const proj = DB.projects.find(p=>p.id===currentProjectFilter);
+    document.querySelector("#view-chats .chat-side-head h3").textContent = "Chats · "+(proj?proj.name:"");
+  } else {
+    document.querySelector("#view-chats .chat-side-head h3").textContent = "Chats";
+  }
+  const list = currentProjectFilter ? chats.filter(c=>c.projectId===currentProjectFilter) : chats;
+  wrap.innerHTML = list.map(c=>{
+    const ai = DB.ais.find(a=>a.id===c.aiId);
+    return `<div class="chat-item ${c.id===currentChatId?"active":""}" data-id="${c.id}">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ai?ai.name+" · ":"")}${esc(c.title)}</span>
+      <button class="del" data-del="${c.id}">✕</button>
+    </div>`;
+  }).join("") || `<div style="color:#555f8f;font-size:12px;padding:12px">Aucun chat.</div>`;
+  wrap.querySelectorAll(".chat-item").forEach(el=>{
+    el.addEventListener("click", e=>{
+      if(e.target.dataset.del) return;
+      currentChatId = el.dataset.id; currentProjectFilter = null;
+      renderChatList(); renderChat();
+    });
+  });
+  wrap.querySelectorAll("[data-del]").forEach(b=>{
+    b.addEventListener("click", e=>{
+      e.stopPropagation();
+      DB.chats = DB.chats.filter(c=>c.id!==b.dataset.del);
+      if(currentChatId===b.dataset.del) currentChatId=null;
+      save(); renderChatList(); renderChat();
+    });
+  });
+}
+
+document.getElementById("btn-add-chat").onclick = ()=>{
+  newChat(currentProjectFilter);
+  renderChatList(); renderChat();
+};
+function newChat(projectId){
+  const c = {id:uid(), title:"Nouveau chat", projectId:projectId||null, aiId:null, messages:[], updated:Date.now()};
+  DB.chats.push(c); currentChatId = c.id; save();
+  return c;
+}
+
+function renderChat(){
+  const wrap = document.getElementById("chat-messages");
+  const c = DB.chats.find(x=>x.id===currentChatId);
+  document.getElementById("chat-suggestions").innerHTML = `
+    <button data-s="Quelle IA pour ce projet ?">Quelle IA pour ce projet ?</button>
+    <button data-s="Compare mes IA de code.">Comparer mes IA de code</button>
+    <button data-s="Quelle IA est la plus rapide ?">La plus rapide ?</button>`;
+  bindSuggestionButtons("chat-suggestions", v=>{
+    document.getElementById("chat-text").value = v; sendChat();
+  });
+  if(!c){
+    wrap.innerHTML = `<div class="empty">Sélectionnez ou créez un chat.<br><br>Le chat conseille l'IA la plus adaptée à votre demande, à partir de votre galaxie.</div>`;
+    return;
+  }
+  wrap.innerHTML = c.messages.map(m=>renderMsg(m)).join("");
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function renderMsg(m){
+  if(m.role==="user") return `<div class="msg user">${esc(m.content)}</div>`;
+  return `<div class="msg bot">${esc(m.content)}${m.rec?renderRec(m.rec):""}</div>`;
+}
+function renderRec(rec){
+  return rec.map((r,i)=>`<div class="rec"><b>${i+1}. ${esc(r.name)}</b><span>${esc(r.why)}</span></div>`).join("");
+}
+function bindSuggestionButtons(id, cb){
+  document.querySelectorAll(`#${id} button`).forEach(b=>{
+    b.onclick = ()=>cb(b.dataset.s);
+  });
+}
+
+document.getElementById("chat-send").onclick = sendChat;
+document.getElementById("chat-text").addEventListener("keydown", e=>{
+  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendChat(); }
+});
+function sendChat(){
+  const ta = document.getElementById("chat-text");
+  const text = ta.value.trim();
+  if(!text) return;
+  let c = DB.chats.find(x=>x.id===currentChatId);
+  if(!c) c = newChat(currentProjectFilter);
+  c.messages.push({role:"user", content:text});
+  if(c.title==="Nouveau chat") c.title = text.slice(0,34)+(text.length>34?"…":"");
+  const reply = advisorReply(text, c);
+  c.messages.push(reply);
+  c.updated = Date.now();
+  save(); ta.value="";
+  renderChatList(); renderChat();
+}
+
+/* ================= CONSEILLER ================= */
+let pendingAdvisorAI = null;
+
+function renderAdvisor(){
+  const wrap = document.getElementById("adv-messages");
+  if(!DB.advisor.length){
+    DB.advisor.push({role:"bot", content:
+`👋 Bienvenue dans le Conseiller !
+
+Décrivez un travail (rédiger, coder, analyser des données, créer une image…), et je vous classe vos IA de la plus à la moins adaptée.
+
+Astuce : cliquez sur une planète de la Galaxie puis « Demander conseil » pour interroger une IA précise.`});
+  }
+  wrap.innerHTML = DB.advisor.map(m=>renderMsg(m)).join("");
+  document.getElementById("adv-suggestions").innerHTML = `
+    <button data-s="Je veux rédiger un article de blog">Rédiger un article</button>
+    <button data-s="Je dois analyser un tableau de ventes dans Excel">Analyser un tableau Excel</button>
+    <button data-s="Créer un logo pour mon entreprise">Créer un logo</button>
+    <button data-s="Faire une recherche sur un marché concurrentiel">Recherche concurrentielle</button>
+    <button data-s="Coder une petite application web">Coder une app</button>
+    <button data-s="Traduire un document en anglais">Traduire un document</button>`;
+  bindSuggestionButtons("adv-suggestions", v=>{
+    document.getElementById("adv-text").value = v; sendAdvisor();
+  });
+  wrap.scrollTop = wrap.scrollHeight;
+}
+document.getElementById("adv-send").onclick = sendAdvisor;
+document.getElementById("adv-text").addEventListener("keydown", e=>{
+  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendAdvisor(); }
+});
+function sendAdvisor(){
+  const ta = document.getElementById("adv-text");
+  const text = ta.value.trim();
+  if(!text) return;
+  DB.advisor.push({role:"user", content:text});
+  const reply = advisorReply(text, null, pendingAdvisorAI);
+  pendingAdvisorAI = null;
+  DB.advisor.push(reply);
+  save(); ta.value="";
+  renderAdvisor();
+}
+
+/* ---- moteur de recommandation ---- */
+function advisorReply(text, chat, aboutAI){
+  let pool = DB.ais;
+  if(chat && chat.projectId){
+    const proj = DB.projects.find(p=>p.id===chat.projectId);
+    if(proj && proj.aiIds.length){
+      const linked = proj.aiIds.map(id=>DB.ais.find(a=>a.id===id)).filter(Boolean);
+      if(linked.length) pool = linked;
+    }
+  }
+  if(aboutAI){
+    const ai = pool.find(a=>a.name===aboutAI) || DB.ais.find(a=>a.name===aboutAI);
+    if(ai) return {role:"bot", content:
+`${ai.name} est pensée pour : ${ai.desc || "—"}`.trim(),
+      rec: [{name:ai.name+" — "+catOf(ai.cat).name, why: ai.tags.slice(0,6).join(" · ")}]};
+  }
+
+  const q = normalize(text);
+  const words = q.split(/[^a-z0-9]+/).filter(w=>w.length>2);
+  const scored = pool.map(ai=>{
+    let score = 0; const hits = [];
+    for(const tag of ai.tags){
+      const nt = normalize(tag);
+      if(q.includes(nt)){ score += nt.includes(" ") ? 3 : 2; hits.push(tag); continue; }
+      for(const w of words){
+        if(nt === w) { score += 2; hits.push(tag); break; }
+        if(nt.length>4 && w.length>4 && (nt.startsWith(w) || w.startsWith(nt))){ score += 1; hits.push(tag); break; }
+      }
+    }
+    for(const w of words){
+      if(normalize(ai.name)===w || normalize(ai.name).includes(w)) score += 4;
+    }
+    if(normalize(ai.desc||"").includes(q)) score += 2;
+    return {ai, score, hits:[...new Set(hits)]};
+  });
+  scored.sort((a,b)=>b.score-a.score);
+  const top = scored.filter(s=>s.score>0).slice(0,3);
+  if(!top.length){
+    return {role:"bot", content:
+`Je n'ai pas trouvé d'IA particulièrement adaptée à « ${text.slice(0,80)} ».
+
+Deux pistes :
+• Une IA généraliste (ChatGPT, Claude ou Le Chat) gère la plupart des demandes.
+• Ajoutez une IA spécialisée avec le bouton « + Ajouter une IA » en précisant ses points forts : le Conseiller saura la recommander ensuite.`};
+  }
+  const intro = chat
+    ? "Voici les IA les plus adaptées à votre demande (dans ce projet) :"
+    : "Voici mes IA classées pour ce travail :";
+  return {role:"bot", content: intro,
+    rec: top.map(s=>({
+      name: s.ai.name+" — "+catOf(s.ai.cat).name,
+      why: (s.hits.length ? "Correspond : "+s.hits.slice(0,4).join(", ")+". " : "") + (s.ai.desc||"")
+    }))};
+}
+
+/* ================= MODALE IA ================= */
+let aiEditing = null;
+function fillCatSelect(){
+  document.getElementById("f-ai-cat").innerHTML =
+    CATEGORIES.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join("");
+}
+document.getElementById("btn-add-ai").onclick = ()=>openAIModal();
+function openAIModal(ai){
+  aiEditing = ai || null;
+  fillCatSelect();
+  document.getElementById("modal-ai-title").textContent = ai ? "Modifier l'IA" : "Ajouter une IA";
+  document.getElementById("f-ai-name").value = ai ? ai.name : "";
+  document.getElementById("f-ai-cat").value = ai ? ai.cat : "custom";
+  document.getElementById("f-ai-tags").value = ai ? ai.tags.join(", ") : "";
+  document.getElementById("f-ai-desc").value = ai ? (ai.desc||"") : "";
+  document.getElementById("f-ai-url").value = ai ? (ai.url||"") : "";
+  document.getElementById("ai-err").style.display="none";
+  document.getElementById("modal-ai").classList.add("open");
+}
+document.getElementById("ai-cancel").onclick = ()=>document.getElementById("modal-ai").classList.remove("open");
+document.getElementById("ai-save").onclick = ()=>{
+  const name = document.getElementById("f-ai-name").value.trim();
+  if(!name){ document.getElementById("ai-err").style.display="block"; return; }
+  const data = {
+    name,
+    cat: document.getElementById("f-ai-cat").value,
+    tags: document.getElementById("f-ai-tags").value.split(",").map(s=>s.trim()).filter(Boolean),
+    desc: document.getElementById("f-ai-desc").value.trim(),
+    url: document.getElementById("f-ai-url").value.trim(),
+  };
+  if(aiEditing){ Object.assign(aiEditing, data); }
+  else { DB.ais.push({id:"custom-"+uid(), custom:true, ...data}); }
+  save();
+  document.getElementById("modal-ai").classList.remove("open");
+  renderLegend();
+  toast(aiEditing ? "IA mise à jour" : "IA ajoutée à la galaxie ✨");
+};
+
+/* ================= EXPORT / IMPORT ================= */
+document.getElementById("btn-export").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "galaxie-ia-"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+};
+document.getElementById("btn-import").onclick = ()=>document.getElementById("file-import").click();
+document.getElementById("file-import").addEventListener("change", e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const d = JSON.parse(r.result);
+      if(!d.ais) throw new Error();
+      DB = d; save();
+      renderLegend(); drawGalaxy(); toast("Données importées ✔");
+    }catch(err){ toast("Fichier invalide"); }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+});
+
+function esc(s){
+  return String(s??"").replace(/[&<>"']/g, c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[c]);
+}
+
+/* ================= INIT ================= */
+renderLegend();
+drawGalaxy();
+</script>
+</body>
+</html>
